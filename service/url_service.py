@@ -5,7 +5,7 @@ class UrlService:
         self._urlrepo=UrlRepo()
         self.BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     
-    def get_short_url(self,org_url:str)->str:
+    def get_short_url(self,org_url:str):
         url_id=self._urlrepo.add_url(url=org_url)
         short_code=self.encode_id(url_id)
         return {"short_url": f"http://localhost:8000/{short_code}"}
@@ -29,5 +29,10 @@ class UrlService:
             cor_num = self.BASE62_ALPHABET.index(char)            
             db_id = (db_id * 62) + cor_num            
         return db_id
+    
+    def get_website(self,short_url:str):
+        id=self.decode_code(code=short_url)
+        org_url=self._urlrepo.fetch_url(id=id)
+        return org_url
 
 

@@ -7,7 +7,7 @@ class UrlRepo():
         with get_db() as conn:
             cur=conn.cursor(cursor_factory=RealDictCursor)
             cur.execute(
-                """Insert into url (url_str) values (%s)""",
+                """Insert into short_urls (original_url) values (%s) RETURNING id""",
                 (url,)
             )
             res=cur.fetchone()
@@ -16,10 +16,10 @@ class UrlRepo():
     
     def fetch_url(self,id:int)->str:
         with get_db() as conn:
-            cur=conn.cursor(cursor_factor=RealDictCursor)
+            cur=conn.cursor(cursor_factory=RealDictCursor)
             cur.execute(
-                """Select url_str from url where id=%s""",
-                (id)
+                """Select original_url from short_urls where id=%s""",
+                (id,)
             )
             res=cur.fetchall()
             return res
