@@ -9,7 +9,7 @@ app=FastAPI()
 def url_shortner(request:Request,url:HttpUrl):
     code= UrlService().get_short_code(org_url=url.unicode_string())
     short_url=str(request.base_url)+code
-    return {"short_url":short_url}
+    return {"short_url":short_url,"message": "This link will expire in 15 days."}
 
 @app.get("/{short_url}")
 def get_website(short_url:str):
