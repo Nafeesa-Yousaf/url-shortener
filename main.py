@@ -1,10 +1,15 @@
-from fastapi import FastAPI, status, Request
+from fastapi import FastAPI, status, Request, Response
 from service.url_service import UrlService
 from fastapi.responses import RedirectResponse
 from pydantic import HttpUrl
 from util.redis_config import redis_client
 import logging
 app=FastAPI()
+
+@app.get("/favicon.png", include_in_schema=False)
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @app.post("/url_shortner")
 def url_shortner(request:Request,url:HttpUrl):
