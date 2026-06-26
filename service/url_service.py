@@ -5,10 +5,10 @@ class UrlService:
         self._urlrepo=UrlRepo()
         self.BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     
-    def get_short_url(self,org_url:str):
+    def get_short_code(self,org_url:str):
         url_id=self._urlrepo.add_url(url=org_url)
         short_code=self.encode_id(url_id)
-        return {"short_url": f"http://localhost:8000/{short_code}"}
+        return short_code
 
 
     def encode_id(self,id:int)->str:

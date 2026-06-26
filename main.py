@@ -1,12 +1,14 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, Request
 from service.url_service import UrlService
 from fastapi.responses import RedirectResponse
-
+from pydantic import HttpUrl
 app=FastAPI()
 
 @app.post("/url_shortner")
-def url_shortner(url:str):
-    return UrlService().get_short_url(org_url=url)
+def url_shortner(request:Request,url:HttpUrl):
+    code= UrlService().get_short_code(org_url=url.unicode_string())
+    short_url=str(request.base_url)+code
+    return {"short_url":short_url}
 
 @app.get("/{short_url}")
 def get_website(short_url:str):
