@@ -4,7 +4,6 @@ from psycopg2 import pool
 from contextlib import contextmanager
 load_dotenv()
 db_url = os.getenv("POSTGRES_URL")
-print(f"------------------->{db_url}")
 
 connection_poll=pool.SimpleConnectionPool(
     1,5,db_url

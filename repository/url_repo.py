@@ -22,4 +22,4 @@ class UrlRepo():
                 (id,)
             )
             res=cur.fetchall()
-            return res
+            return res[0]["original_url"]

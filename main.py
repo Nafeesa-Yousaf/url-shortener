@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from service.url_service import UrlService
+from fastapi.responses import RedirectResponse
 
 app=FastAPI()
 
@@ -7,6 +8,7 @@ app=FastAPI()
 def url_shortner(url:str):
     return UrlService().get_short_url(org_url=url)
 
-@app.get("/")
+@app.get("/{short_url}")
 def get_website(short_url:str):
-    return UrlService().get_website(short_url)
+    url=UrlService().get_website(short_url)
+    return RedirectResponse(url=url,status_code=status.HTTP_302_FOUND)
