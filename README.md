@@ -55,8 +55,12 @@ Here is a visual representation of the application's data flow and request paths
 
 1. **Request:** The client clicks the short URL.
 2. **Cache Lookup:** FastAPI queries Redis (in-memory lookup).
-3. **Cache Hit:** If found, the client is immediately redirected to the original URL (sub-millisecond latency, zero DB load).
-4. **Cache Miss:** If expired or missing, the code is decoded back to the integer ID, fetched from PostgreSQL, and then redirected.
+3. **Cache Hit:** If found, the client is immediately redirected to the original URL with sub-millisecond latency and zero database load.
+4. **Cache Miss & Self-Healing:** If the token is missing or expired from Redis:
+   * The short code is decoded back into its integer ID.
+   * The original URL is fetched from **PostgreSQL**.
+   * **Cache Repair:** The URL is written *back* into Upstash Redis with a fresh 15-day TTL, ensuring all subsequent clicks result in an instant cache hit.
+5. **Response:** The client is seamlessly redirected to their final destination.
 
 ---
 
