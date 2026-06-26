@@ -35,6 +35,8 @@ class UrlService:
     def get_website(self,short_url:str):
         id=self.decode_code(code=short_url)
         org_url=self._urlrepo.fetch_url(id=id)
+        if org_url:
+            redis_client.set(key=short_url, value=org_url, ex=1296000)
         return org_url
 
 
