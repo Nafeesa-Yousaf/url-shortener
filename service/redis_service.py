@@ -11,10 +11,10 @@ class RedisService():
         redis_key=f"rate_limit:{client_ip}"
         pipeline = redis_client.pipeline()        
         pipeline.incr(redis_key)
-        pipeline.expire(redis_key, 10)        
+        pipeline.expire(redis_key, 1)        
         result = pipeline.exec()
         current_request=result[0]
-        if current_request and int(current_request)>10:
+        if current_request and int(current_request)>5:
             logging.warning(f"🚫 [RATE LIMIT BLOCK] IP {client_ip} exceeded request threshold!")
             raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
