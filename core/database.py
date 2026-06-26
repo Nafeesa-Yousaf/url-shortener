@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from psycopg2 import pool
 from contextlib import contextmanager
 load_dotenv()
-db_url = os.getenv("POSTGRES_URL")
+db_url = os.getenv("DB_URL")
 
 connection_poll=pool.SimpleConnectionPool(
     1,5,db_url
