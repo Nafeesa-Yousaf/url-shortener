@@ -1,4 +1,5 @@
 from repository.url_repo import UrlRepo
+from util.redis_config import redis_client
 
 class UrlService:
     def __init__(self):
@@ -8,6 +9,7 @@ class UrlService:
     def get_short_code(self,org_url:str):
         url_id=self._urlrepo.add_url(url=org_url)
         short_code=self.encode_id(url_id)
+        redis_client.set(key=short_code,value=org_url,ex=1296000) #expire in 15 days
         return short_code
 
 
