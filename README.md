@@ -14,6 +14,8 @@ By coupling **FastAPI** with **PostgreSQL** and **Upstash Redis** (distributed i
    Relational databases can easily become a bottleneck when handling high-frequency read operations (e.g., millions of users clicking redirect links simultaneously). We address this by implementing a **Cache-Aside pattern** with Upstash Redis, offloading over 95% of redirect reads from PostgreSQL to memory.
 2. **Collision-Free Key Generation:** 
    Instead of generating random strings and querying the database to check for duplicates (which causes database roundtrips and high contention), we utilize a deterministic sequence-to-string mapping via Base62 encoding.
+3. **API Rate Limiting & Abuse Prevention:**
+   Exposed endpoints are vulnerable to brute-force attacks, crawler bots, and general abuse, which can exhaust database/cache connections and resources. We protect both URL shortening and redirection endpoints with a fast, Redis-backed rate-limiting middleware.
 
 ---
 
@@ -25,8 +27,10 @@ By coupling **FastAPI** with **PostgreSQL** and **Upstash Redis** (distributed i
 * **Persistent Storage & Connection Management (PostgreSQL & psycopg2):**
   * PostgreSQL is our persistent database of record.
   * We use `psycopg2`'s `SimpleConnectionPool` alongside a custom Python context manager (`get_db`) to safely acquire, release, and rollback database transactions, preventing resource leaks.
-* **Distributed Caching (Upstash Redis):**
-  * We use **Upstash Redis** for cache-aside reads. We connect to it using the async-capable `upstash-redis` client, configuring a 15-day TTL for key eviction.
+* **Distributed Caching & Rate Limiting (Upstash Redis):**
+  * We use **Upstash Redis** for cache-aside reads and rate limiting. We connect to it using the async-capable `upstash-redis` client.
+  * **Cache TTL:** Configured with a 15-day Time-To-Live (TTL) for key eviction.
+  * **Rate Limiter:** We enforce a limit of **5 requests per second per IP** using an atomic Redis pipeline (`INCR` and `EXPIRE` run together within a transaction to avoid race conditions).
 * **Identifier Generation (Base62 Encoding):**
   * A custom math-based **Base62 mapping** (`0-9`, `a-z`, `A-Z`) translates auto-incremented database IDs into compact short codes (and vice-versa). This guarantees collision-free lookup keys.
 * **Hosting & Environment Config (Vercel & python-dotenv):**
@@ -45,22 +49,24 @@ Here is a visual representation of the application's data flow and request paths
 
 ### Shortening a URL (`POST /url_shortner`)
 
-1. **Request:** The user sends a long URL.
-2. **Persistence:** The URL is inserted into PostgreSQL, which returns a guaranteed unique, auto-incrementing integer `ID`.
-3. **Encoding:** We encode the unique database `ID` into a **Base62 string** (e.g., database ID `125` translates to a short code like `23`).
-4. **Caching:** The key-value pair (`short_code -> original_url`) is written to Upstash Redis with a **15-day TTL (Time-To-Live)**.
-5. **Response:** The API constructs and returns the shortened link.
+1. **Rate Limiting Check (Pre-requisite):** The application extracts the client's IP and checks the request count in Redis using the key `rate_limit:{client_ip}`. If the count in the current 1-second window exceeds 5, the request is immediately rejected with an `HTTP 429 Too Many Requests` error.
+2. **Request:** The user sends a long URL.
+3. **Persistence:** The URL is inserted into PostgreSQL, which returns a guaranteed unique, auto-incrementing integer `ID`.
+4. **Encoding:** We encode the unique database `ID` into a **Base62 string** (e.g., database ID `125` translates to a short code like `23`).
+5. **Caching:** The key-value pair (`short_code -> original_url`) is written to Upstash Redis with a **15-day TTL (Time-To-Live)**.
+6. **Response:** The API constructs and returns the shortened link.
 
 ### Resolving and Redirecting (`GET /{short_url}`)
 
-1. **Request:** The client clicks the short URL.
-2. **Cache Lookup:** FastAPI queries Redis (in-memory lookup).
-3. **Cache Hit:** If found, the client is immediately redirected to the original URL with sub-millisecond latency and zero database load.
-4. **Cache Miss & Self-Healing:** If the token is missing or expired from Redis:
+1. **Rate Limiting Check (Pre-requisite):** Similarly, the client's IP is checked in Redis. If the client makes more than 5 requests per second, the API halts execution and returns an `HTTP 429 Too Many Requests` error.
+2. **Request:** The client clicks the short URL.
+3. **Cache Lookup:** FastAPI queries Redis (in-memory lookup).
+4. **Cache Hit:** If found, the client is immediately redirected to the original URL with sub-millisecond latency and zero database load.
+5. **Cache Miss & Self-Healing:** If the token is missing or expired from Redis:
    * The short code is decoded back into its integer ID.
    * The original URL is fetched from **PostgreSQL**.
    * **Cache Repair:** The URL is written *back* into Upstash Redis with a fresh 15-day TTL, ensuring all subsequent clicks result in an instant cache hit.
-5. **Response:** The client is seamlessly redirected to their final destination.
+6. **Response:** The client is seamlessly redirected to their final destination.
 
 ---
 
@@ -71,6 +77,7 @@ Through this implementation, we explore and demonstrate several core system desi
 * **The Cache-Aside Pattern:** Designing robust fallback logic to handle cache misses while minimizing write amplification and keeping cache values consistent with persistent storage.
 * **Deterministic Identifier Mapping:** Using Base62 encoding to generate clean short URLs from database IDs. This avoids hash collisions (unlike MD5/SHA256 truncation) and eliminates database lookups during key generation.
 * **Distributed Cache Expiry (TTL):** Applying caching strategies (such as a 15-day TTL) to manage memory efficiently, ensuring hot links stay in memory while inactive links are naturally evicted.
+* **Atomic Rate Limiting:** Using Redis transaction pipelines to group incremental counters and key expiration into a single network round-trip. This prevents race conditions and shields the application from brute-force request floods.
 
 ---
 
