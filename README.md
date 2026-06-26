@@ -4,7 +4,7 @@
 
 A clean, production-ready URL shortener designed to demonstrate key patterns in **distributed systems** and **scalable backend architecture**. 
 
-By coupling **FastAPI** (stateless application layer) with **PostgreSQL** (ACID-compliant persistence) and **Upstash Redis** (distributed in-memory cache), the system maintains high performance under heavy read traffic while keeping database lookup overhead to a minimum.
+By coupling **FastAPI** with **PostgreSQL** and **Upstash Redis** (distributed in-memory cache), the system maintains high performance under heavy read traffic while keeping database lookup overhead to a minimum.
 
 ---
 
@@ -12,9 +12,7 @@ By coupling **FastAPI** (stateless application layer) with **PostgreSQL** (ACID-
 
 1. **Database Bottlenecks & Scale-Out Reads:** 
    Relational databases can easily become a bottleneck when handling high-frequency read operations (e.g., millions of users clicking redirect links simultaneously). We address this by implementing a **Cache-Aside pattern** with Upstash Redis, offloading over 95% of redirect reads from PostgreSQL to memory.
-2. **Stateless Compute Layer:** 
-   The application servers are completely stateless, allowing them to scale horizontally across serverless hosting environments (like Vercel) without session synchronization overhead.
-3. **Collision-Free Key Generation:** 
+2. **Collision-Free Key Generation:** 
    Instead of generating random strings and querying the database to check for duplicates (which causes database roundtrips and high contention), we utilize a deterministic sequence-to-string mapping via Base62 encoding.
 
 ---
@@ -27,7 +25,7 @@ By coupling **FastAPI** (stateless application layer) with **PostgreSQL** (ACID-
 * **Persistent Storage & Connection Management (PostgreSQL & psycopg2):**
   * PostgreSQL is our persistent database of record.
   * We use `psycopg2`'s `SimpleConnectionPool` alongside a custom Python context manager (`get_db`) to safely acquire, release, and rollback database transactions, preventing resource leaks.
-* **Distributed Caching (Upstash Redis & upstash-redis):**
+* **Distributed Caching (Upstash Redis):**
   * We use **Upstash Redis** for cache-aside reads. We connect to it using the async-capable `upstash-redis` client, configuring a 15-day TTL for key eviction.
 * **Identifier Generation (Base62 Encoding):**
   * A custom math-based **Base62 mapping** (`0-9`, `a-z`, `A-Z`) translates auto-incremented database IDs into compact short codes (and vice-versa). This guarantees collision-free lookup keys.
@@ -62,13 +60,12 @@ Here is a visual representation of the application's data flow and request paths
 
 ---
 
-## 🧠 Distributed Systems & Scalability Learnings
+## 🧠 Key Takeaways & What I Learned
 
 Through this implementation, we explore and demonstrate several core system design concepts:
 
 * **The Cache-Aside Pattern:** Designing robust fallback logic to handle cache misses while minimizing write amplification and keeping cache values consistent with persistent storage.
 * **Deterministic Identifier Mapping:** Using Base62 encoding to generate clean short URLs from database IDs. This avoids hash collisions (unlike MD5/SHA256 truncation) and eliminates database lookups during key generation.
-* **Statelessness for Horizontal Scaling:** Keeping the application servers free of local state so they can instantly scale up or down based on traffic demands.
 * **Distributed Cache Expiry (TTL):** Applying caching strategies (such as a 15-day TTL) to manage memory efficiently, ensuring hot links stay in memory while inactive links are naturally evicted.
 
 ---
@@ -105,10 +102,10 @@ Open your browser at `http://127.0.0.1:8000/docs` to test the API endpoints usin
 
 ## 🌐 Deployment & Hosting
 
-* **Live API Documentation:** [https://url-shortener-one-self.vercel.app/docs](https://url-shortener-one-self.vercel.app/docs)
+* **Live APP:** [https://url-shortener-one-self.vercel.app/docs](https://url-shortener-one-self.vercel.app/docs)
 * **API Application:** Hosted on [Vercel](https://vercel.com) using Serverless Functions (configured inside `vercel.json`).
 * **Cache:** Hosted on [Upstash](https://upstash.com) (Serverless Redis).
-* **Database:** Hosted on any PostgreSQL provider (such as Neon, Supabase, or AWS RDS).
+* **Database:** Hosted on Supabase (PostgreSQL provider).
 
 ---
 
