@@ -124,12 +124,12 @@ Open your browser at `http://127.0.0.1:8000/docs` to test the API endpoints usin
 
 Since the Redis cache automatically expires keys after 15 days (`ex=1296000`), we have added a cron job in Supabase to keep the PostgreSQL database clean and lean by automatically purging old records.
 
-This cron job runs every 15 days at midnight and deletes any database records from the `short_urls` table where the creation timestamp (`created_at`) is older than 15 days:
+This cron job runs daily at midnight and deletes any database records from the `short_urls` table where the creation timestamp (`created_at`) is older than 15 days:
 
 ```sql
 select cron.schedule(
   'prune-expired-urls',
-  '0 0 */15 * *', -- Runs every 15 days at midnight
+  '0 0 * * *', -- Runs daily at midnight
   $$ delete from short_urls where created_at < now() - interval '15 days' $$
 );
 ```
